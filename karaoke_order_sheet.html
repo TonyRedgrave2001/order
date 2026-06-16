@@ -1166,10 +1166,10 @@ function renderPreview() {
     const mc = entry.members.length;
     entry.members.forEach((m,idx) => {
       const batHtml = `<div class="bat-toggle">
-        <button class="sen ${m.bat==='先攻'?'on':''}" onclick="setBat(${entry.id},${idx},'先攻')">先攻</button>
-        <button class="kou ${m.bat==='後攻'?'on':''}" onclick="setBat(${entry.id},${idx},'後攻')">後攻</button>
+        <button class="sen ${m.bat==='先攻'?'on':''}" onclick="setBat('${entry.id}',${idx},'先攻')">先攻</button>
+        <button class="kou ${m.bat==='後攻'?'on':''}" onclick="setBat('${entry.id}',${idx},'後攻')">後攻</button>
       </div>`;
-      const orderHtml = `<input class="order-input" type="text" value="${escHtml(m.order)}" placeholder="—" oninput="setOrder(${entry.id},${idx},this.value)" maxlength="4">`;
+      const orderHtml = `<input class="order-input" type="text" value="${escHtml(m.order)}" placeholder="—" oninput="setOrder('${entry.id}',${idx},this.value)" maxlength="4">`;
       html += `<tr><td>${orderHtml}</td>`;
       if (idx===0) {
         html += `<td rowspan="${mc}"><span class="badge ${bc}">${bl}</span></td>
@@ -1181,8 +1181,8 @@ function renderPreview() {
         <td>${escHtml(m.artist)}</td><td>${escHtml(m.track)}</td><td>${escHtml(m.key)}</td>
         <td>${batHtml}</td>`;
       if (idx===0) html += `<td rowspan="${mc}" style="white-space:nowrap;">
-        <button class="btn btn-secondary" style="padding:4px 10px;font-size:12px;margin-bottom:4px;" onclick="loadEntryForEdit(${entry.id})">✏️</button>
-        <button class="btn btn-danger"    style="padding:4px 10px;font-size:12px;" onclick="removeEntry(${entry.id})">✕</button>
+        <button class="btn btn-secondary" style="padding:4px 10px;font-size:12px;margin-bottom:4px;" onclick="loadEntryForEdit('${entry.id}')">✏️</button>
+        <button class="btn btn-danger"    style="padding:4px 10px;font-size:12px;" onclick="removeEntry('${entry.id}')">✕</button>
       </td>`;
       html += `</tr>`;
     });
@@ -1273,14 +1273,13 @@ function loadEntryForEdit(id) {
   });
   currentTab = 'input';
 
-  // モード合わせ（rounds リセットを避けるため直接変更）
+  // モード合わせ
   if (mode !== entry.mode) {
     mode = entry.mode;
     document.getElementById('tab-team').classList.toggle('active', mode === 'team');
     document.getElementById('tab-ind').classList.toggle('active', mode === 'individual');
     document.getElementById('team-settings').style.display = mode === 'team' ? 'flex' : 'none';
     document.getElementById('ind-settings').style.display  = mode === 'individual' ? 'flex' : 'none';
-    rounds = [1]; nextRoundNum = 2;
   }
 
   // ラウンドセット（固定リストから）
