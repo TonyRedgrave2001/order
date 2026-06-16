@@ -738,7 +738,6 @@ function doLogin() {
     renderPreview();
     renderFilterBar();
     updateTabCounts();
-    markDirty(); // ローカルJSONも更新
   }, err => {
     showToast('⚠️ Firebase接続エラー: ' + err.message);
   });
