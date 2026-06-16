@@ -262,11 +262,38 @@
   .empty-msg { text-align: center; color: #bbb; padding: 40px; font-size: 14px; }
   .empty-msg .em-icon { font-size: 40px; display: block; margin-bottom: 10px; }
 
-  /* ── 編集モード通知バー ── */
+  /* ── 編集モード通知バー（フォーム内） ── */
   .edit-mode-bar {
     background: #fff8e1; border: 2px solid #ffa000; border-radius: 10px;
     padding: 10px 16px; font-size: 13px; font-weight: 700; color: #e65100;
     display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+  }
+
+  /* ── 編集スティッキーバー（画面下部固定） ── */
+  #edit-sticky {
+    display: none;
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 8000;
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border-top: 3px solid #ffa000;
+    padding: 12px 20px;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+    display: none; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  #edit-sticky.open { display: flex; }
+  .edit-sticky-info {
+    flex: 1; min-width: 180px;
+    color: #ffd54f; font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .edit-sticky-info .es-name {
+    background: rgba(255,213,79,0.15); border-radius: 6px;
+    padding: 2px 8px; font-size: 12px; color: #fff;
+  }
+  body.editing-mode { padding-bottom: 68px; }
+  @media (max-width: 640px) {
+    #edit-sticky { padding: 10px 14px; gap: 8px; }
+    .edit-sticky-info { font-size: 12px; }
+    body.editing-mode { padding-bottom: 72px; }
   }
 
   .toast { position: fixed; bottom: 24px; right: 24px; background: #5e35b1; color: white; padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 16px rgba(0,0,0,0.2); transform: translateY(80px); opacity: 0; transition: all 0.3s; z-index: 10000; }
@@ -581,6 +608,15 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- ── 編集スティッキーバー ── -->
+<div id="edit-sticky">
+  <div class="edit-sticky-info">
+    ✏️ 編集中：<span class="es-name" id="es-name"></span>
+  </div>
+  <button class="btn btn-primary" style="padding:10px 22px;font-size:14px;" onclick="saveEditFromForm()">💾 更新</button>
+  <button class="btn btn-secondary" style="padding:10px 18px;font-size:14px;" onclick="cancelEdit()">キャンセル</button>
 </div>
 
 <div id="ac-dropdown"></div>
@@ -1236,15 +1272,25 @@ function loadEntryForEdit(id) {
 
 function updateActionBar() {
   const bar = document.getElementById('action-bar');
+  const sticky = document.getElementById('edit-sticky');
+  const esName = document.getElementById('es-name');
+
   if (editingId !== null) {
+    const entry = entries.find(e => e.id === editingId);
+    const label = entry ? (entry.mode === 'team' ? entry.teamName : entry.members[0]?.name) : '';
     bar.innerHTML = `
       <div class="edit-mode-bar">✏️ 編集中 — 変更後に「更新」を押してください</div>
       <button class="btn btn-primary" onclick="saveEditFromForm()">💾 更新</button>
       <button class="btn btn-secondary" onclick="cancelEdit()">キャンセル</button>`;
+    if (esName) esName.textContent = label || '—';
+    sticky.classList.add('open');
+    document.body.classList.add('editing-mode');
   } else {
     bar.innerHTML = `
       <button class="btn btn-primary" onclick="addToList()">📋 リストに追加</button>
       <button class="btn btn-secondary" onclick="clearForm()">🗑️ クリア</button>`;
+    sticky.classList.remove('open');
+    document.body.classList.remove('editing-mode');
   }
 }
 
