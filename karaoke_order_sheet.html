@@ -264,11 +264,6 @@
   .empty-msg { text-align: center; color: #bbb; padding: 40px; font-size: 14px; }
   .empty-msg .em-icon { font-size: 40px; display: block; margin-bottom: 10px; }
 
-  /* ── JSONデータ管理カード ── */
-  .json-status-bar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
-  .json-file-name { font-size:13px; font-weight:700; color:#2e7d32; display:flex; align-items:center; gap:6px; }
-  .json-save-time { font-size:11px; color:#999; }
-  .json-unsaved { color:#e65100; font-size:11px; font-weight:700; }
 
   /* ── 編集モード通知バー（フォーム内） ── */
   .edit-mode-bar {
@@ -586,21 +581,6 @@
 <div class="panel" id="panel-list">
   <div class="main">
 
-    <!-- JSONデータ管理 -->
-    <div class="card" id="json-mgmt-card">
-      <div class="card-header-bar dark" style="flex-wrap:wrap;gap:8px;">
-        <span>💾 JSONデータ管理</span>
-        <div class="json-status-bar" id="json-status">
-          <span style="font-size:12px;color:#aac;">ファイル未選択</span>
-        </div>
-      </div>
-      <div class="card-body" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:14px 16px;">
-        <button class="btn btn-primary"   style="padding:8px 16px;font-size:13px;" onclick="openJsonFile()">📂 開く</button>
-        <button class="btn btn-secondary" style="padding:8px 16px;font-size:13px;" onclick="newJsonFile()">🆕 新規作成</button>
-        <button class="btn btn-secondary" style="padding:8px 16px;font-size:13px;" onclick="manualSave()">💾 手動保存</button>
-        <input type="file" id="json-import-input" accept=".json,application/json" style="display:none" onchange="importJsonFromInput(this)">
-      </div>
-    </div>
 
     <div class="card">
       <div class="card-header-bar dark">
@@ -720,7 +700,6 @@ function doLogin() {
   }
 
   renderEntry();
-  _updateJsonStatus();
 
   // Firebase 接続状態表示
   const fbStatus = document.getElementById('fb-status');
@@ -1416,144 +1395,6 @@ function saveEditFromForm() {
   renderPreview();
   renderFilterBar();
   updateTabCounts();
-}
-
-/* ══════════════════════════════════════════
-   JSONファイル管理
-══════════════════════════════════════════ */
-let jsonFileHandle = null;
-let lastSavedAt    = null;
-let hasUnsaved     = false;
-let autoSaveTimer  = null;
-const FS_SUPPORTED = typeof window !== 'undefined' && 'showOpenFilePicker' in window;
-
-function jsonPayload() {
-  return JSON.stringify({ version: 1, savedAt: new Date().toISOString(), entries }, null, 2);
-}
-
-async function newJsonFile() {
-  if (FS_SUPPORTED) {
-    try {
-      const handle = await window.showSaveFilePicker({
-        suggestedName: `カラオケ大会_${new Date().toLocaleDateString('ja-JP').replace(/\//g,'-')}.json`,
-        types: [{ description: 'JSONファイル', accept: { 'application/json': ['.json'] } }]
-      });
-      jsonFileHandle = handle;
-      await _writeToHandle();
-      showToast('✅ JSONファイルを作成しました');
-    } catch(e) { if (e.name !== 'AbortError') showToast('⚠️ ' + e.message); }
-  } else {
-    _downloadJson();
-  }
-}
-
-async function openJsonFile() {
-  if (FS_SUPPORTED) {
-    try {
-      const [handle] = await window.showOpenFilePicker({
-        types: [{ description: 'JSONファイル', accept: { 'application/json': ['.json'] } }]
-      });
-      jsonFileHandle = handle;
-      const file = await handle.getFile();
-      _applyJsonData(JSON.parse(await file.text()));
-      showToast('✅ JSONを読み込みました');
-    } catch(e) { if (e.name !== 'AbortError') showToast('⚠️ ' + e.message); }
-  } else {
-    document.getElementById('json-import-input').click();
-  }
-}
-
-async function manualSave() {
-  if (jsonFileHandle) { await _writeToHandle(); showToast('💾 保存しました'); }
-  else _downloadJson();
-}
-
-async function _writeToHandle() {
-  try {
-    const writable = await jsonFileHandle.createWritable();
-    await writable.write(jsonPayload());
-    await writable.close();
-    lastSavedAt = new Date();
-    hasUnsaved = false;
-    _updateJsonStatus();
-  } catch(e) { console.warn('JSON保存エラー:', e); }
-}
-
-function _downloadJson() {
-  const blob = new Blob([jsonPayload()], { type: 'application/json;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `カラオケ大会_${new Date().toISOString().slice(0,10)}.json`; a.click();
-  URL.revokeObjectURL(url);
-  showToast('⬇️ JSONをダウンロードしました');
-}
-
-function importJsonFromInput(input) {
-  const file = input.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try { _applyJsonData(JSON.parse(e.target.result)); showToast('✅ JSONを読み込みました'); }
-    catch { showToast('⚠️ JSONの読み込みに失敗しました'); }
-    input.value = '';
-  };
-  reader.readAsText(file, 'UTF-8');
-}
-
-function _applyJsonData(data) {
-  if (!data || !Array.isArray(data.entries)) { showToast('⚠️ 有効なデータがありません'); return; }
-  entries = data.entries;
-  filterRound = 'all'; matchupRound = null;
-  renderPreview(); renderFilterBar(); updateTabCounts();
-  lastSavedAt = data.savedAt ? new Date(data.savedAt) : null;
-  hasUnsaved = false;
-  _updateJsonStatus();
-}
-
-function _updateJsonStatus() {
-  const el = document.getElementById('json-status'); if (!el) return;
-  if (jsonFileHandle) {
-    const time = lastSavedAt ? lastSavedAt.toLocaleTimeString('ja-JP') : '—';
-    el.innerHTML =
-      `<span class="json-file-name">💾 ${escHtml(jsonFileHandle.name)}</span>` +
-      `<span class="json-save-time">最終保存: ${time}</span>` +
-      (hasUnsaved ? `<span class="json-unsaved">● 未保存あり</span>` : '');
-  } else {
-    el.innerHTML = `<span style="font-size:12px;color:#aac;">ファイル未選択 — 「開く」または「新規作成」してください</span>`;
-  }
-}
-
-// エントリー変更後に呼ぶ（デバウンス付き）
-// ファイル未選択時は自動的に保存先ダイアログを表示する
-function markDirty() {
-  hasUnsaved = true;
-  _updateJsonStatus();
-  clearTimeout(autoSaveTimer);
-  if (!jsonFileHandle) {
-    // FS API が使える場合は初回のみ自動的に保存先を確認
-    if (FS_SUPPORTED) {
-      autoSaveTimer = setTimeout(async () => {
-        if (!jsonFileHandle) {
-          try {
-            const handle = await window.showSaveFilePicker({
-              suggestedName: `カラオケ大会_${new Date().toLocaleDateString('ja-JP').replace(/\//g,'-')}.json`,
-              types: [{ description: 'JSONファイル', accept: { 'application/json': ['.json'] } }]
-            });
-            jsonFileHandle = handle;
-            await _writeToHandle();
-            showToast('✅ 自動保存ファイルを作成しました');
-          } catch(e) {
-            // ユーザーがキャンセルした場合は何もしない
-            if (e.name !== 'AbortError') showToast('⚠️ ' + e.message);
-          }
-        }
-      }, 800);
-    } else {
-      // FS API 非対応ブラウザはダウンロードにフォールバック
-      autoSaveTimer = setTimeout(() => _downloadJson(), 1200);
-    }
-    return;
-  }
-  autoSaveTimer = setTimeout(() => _writeToHandle(), 1200);
 }
 
 /* ══════════════════════════════════════════
